@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auditor-service
+  labels:
+    app: auditor-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auditor-service
+  template:
+    metadata:
+      labels:
+        app: auditor-service
+    spec:
+      containers:
+      - name: auditor-service
+        image: auditor-service:latest
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "300m"
+        env:
+        - name: RABBITMQ_HOST
+          value: "rabbitmq"
+        - name: RABBITMQ_PORT
+          value: "5672"
+        - name: RABBITMQ_USER
+          value: "guest"
+        - name: RABBITMQ_PASS
+          value: "guest"
+        - name: CLAIMS_QUEUE
+          value: "claims_created_queue"
+        - name: CLAIMS_UPDATED_QUEUE
+          value: "claims_updated_queue"
+        - name: AUDIT_DIR
+          value: "/app/audit_logs"
+        volumeMounts:
+        - name: audit-logs
+          mountPath: /app/audit_logs
+      volumes:
+      - name: audit-logs
+        persistentVolumeClaim:
+          claimName: audit-logs-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: audit-logs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
