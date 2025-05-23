@@ -1,3 +1,5 @@
+# ~/repos-ucc/Final Sistemas Distribuidos/kubernetes/claims-service-deployment.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,7 +19,7 @@ spec:
       containers:
       - name: claims-service
         image: claims-service:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
         resources:
@@ -44,12 +46,14 @@ spec:
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
+          failureThreshold: 3
         livenessProbe:
           httpGet:
             path: /actuator/health
             port: 8080
           initialDelaySeconds: 60
           periodSeconds: 30
+          failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service
@@ -59,8 +63,9 @@ spec:
   selector:
     app: claims-service
   ports:
-  - port: 80
+  - port: 8080
     targetPort: 8080
+    protocol: TCP
   type: ClusterIP
 ---
 apiVersion: autoscaling/v2

@@ -5,7 +5,7 @@ metadata:
   labels:
     app: auditor-service
 spec:
-  replicas: 1
+  replicas: 1 # Un auditor suele ser suficiente, a menos que el volumen de eventos sea masivo y el procesamiento lo requiera.
   selector:
     matchLabels:
       app: auditor-service
@@ -16,8 +16,13 @@ spec:
     spec:
       containers:
       - name: auditor-service
-        image: auditor-service:latest
-        imagePullPolicy: IfNotPresent
+        # --- ADAPTACIÓN AQUÍ: Usar tu imagen construida localmente ---
+        image: josephrodri/auditor-service:latest # <--- ¡CAMBIADO! Usar tu nombre de usuario de Docker Hub
+        imagePullPolicy: IfNotPresent # Ideal para desarrollo local con Docker Desktop
+        # Si vas a subir la imagen a Docker Hub y usar un clúster en la nube,
+        # considera cambiar a Always o dejar IfNotPresent si el tag 'latest' cambia.
+        # imagePullPolicy: Always
+        # -------------------------------------------------------------
         resources:
           requests:
             memory: "256Mi"
@@ -27,26 +32,26 @@ spec:
             cpu: "300m"
         env:
         - name: RABBITMQ_HOST
-          value: "rabbitmq"
+          value: "rabbitmq" # <--- ¡ADAPTACIÓN! Nombre del Service de RabbitMQ en K8s
         - name: RABBITMQ_PORT
           value: "5672"
         - name: RABBITMQ_USER
-          value: "guest"
+          value: "guest" # Considera usar Secrets para esto en producción
         - name: RABBITMQ_PASS
-          value: "guest"
+          value: "guest" # Considera usar Secrets para esto en producción
         - name: CLAIMS_QUEUE
           value: "claims_created_queue"
         - name: CLAIMS_UPDATED_QUEUE
           value: "claims_updated_queue"
         - name: AUDIT_DIR
-          value: "/app/audit_logs"
+          value: "/app/audit_logs" # Directorio donde el auditor Python escribirá los logs
         volumeMounts:
         - name: audit-logs
-          mountPath: /app/audit_logs
+          mountPath: /app/audit_logs # Monta el volumen persistente en el contenedor
       volumes:
       - name: audit-logs
         persistentVolumeClaim:
-          claimName: audit-logs-pvc
+          claimName: audit-logs-pvc # Referencia al PVC definido abajo
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -54,7 +59,10 @@ metadata:
   name: audit-logs-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteOnce # El volumen puede ser montado como lectura-escritura por un único nodo.
   resources:
     requests:
-      storage: 2Gi
+      storage: 2Gi # Solicita 2 Gigabytes de almacenamiento
+  # storageClassName: standard # <--- OPCIONAL: Puedes especificar una StorageClass si tu clúster tiene varias.
+                              # Minikube usa 'standard' por defecto. En la nube, es común especificar una.
+                              # Si no la especificas, usará la default StorageClass del clúster.
